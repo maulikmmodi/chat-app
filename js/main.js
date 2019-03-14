@@ -45,8 +45,10 @@ var messages = [], //array that hold the record of each string in chat
 	function chatbotResponse() {
 		
 		// User's own message for display
-		userMessage();
+		lastUserMessage = userMessage();
 		
+		console.log('lastUserMessage', lastUserMessage);
+
 		return new Promise(function (resolve, reject) {
 			talking = true;
 			let params = {};
@@ -134,10 +136,14 @@ function userMessage() {
 	if($.trim(message) == '') {
 		return false;
 	}
+
+	console.log('message0--->'+ message);
 	$('<li class="sent"><p>' + message + '</p></li>').appendTo($('.messages ul'));
 	$('.message-input input').val(null);
 	$('.contact.active .preview').html('<span>You: </span>' + message);
 	$(".messages").animate({ scrollTop: $(document).height() }, "fast");
+
+	return message;
 };
 
 $('.submit').click(function() {
