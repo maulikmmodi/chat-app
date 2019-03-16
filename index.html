@@ -30,21 +30,46 @@
 	<div id="sidepanel">
 		<div id="profile">
 			<div class="wrap">
-				<img id="profile-img" src="https://s3-us-west-2.amazonaws.com/chat1-backet/temp/aws.png" class="online" alt="" />
-				<p>AWS Profile</p>
+				<img id="profile-img" src="https://s3-us-west-2.amazonaws.com/chat1-backet/temp/man.png" class="online" alt="" />
+				<p>User Profile</p>
 			</div>
+		</div>
+		<div id="contacts">
+			<ul>
+				<li class="contact active">
+					<div class="wrap">
+						<span class="contact-status online"></span>
+						<img src="https://s3-us-west-2.amazonaws.com/chat1-backet/temp/Yelp-logo.jpg" alt="" />
+						<div class="meta">
+							<p class="name">Food-Bot</p>
+							<p class="preview"></p>
+						</div>
+					</div>
+				</li>
+				<li class="contact">
+					<div class="wrap">
+						<span class="contact-status busy"></span>
+						<img src="https://s3-us-west-2.amazonaws.com/chat1-backet/temp/imdb-logo.jpg" alt="" />
+						<div class="meta">
+							<p class="name">Movie-Bot</p>
+							<p class="preview"></p>
+						</div>
+					</div>
+				</li>
+			</ul>
 		</div>
 		
 		<div id="bottom-bar">
-			<button id="addcontact"><i class="fa fa-user-plus fa-fw" aria-hidden="true"></i> <span>Add contact</span></button>
+			<button id="addcontact"><i class="fa fa-sign-out fa-fw" aria-hidden="true"></i> <span>Sign Out</span></button>
 			<button id="settings"><i class="fa fa-cog fa-fw" aria-hidden="true"></i> <span>Settings</span></button>
 		</div>
 	</div>
 	<div class="content">
 		<div class="contact-profile">
+			<img src="https://s3-us-west-2.amazonaws.com/chat1-backet/temp/aws.png" alt="" />
 			<p style="margin-left: 15px;font-weight: 600;">Chat Application</p>
 		</div>
-		<div class="messages">
+		<div class="messages" style="width: -webkit-fill-available;">
 			<ul>
 				<!-- <li class="replies">
 					<img src="http://emilcarlsson.se/assets/harveyspecter.png" alt="" />
