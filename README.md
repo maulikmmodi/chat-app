@@ -9,7 +9,7 @@ We have support for Yelp-API with suggestions and real time chat. <br/>
 
 ![example](/temp/chat-example.png)
 
-### Chat-ai application with AWS resources.
+## Chat-ai application with AWS resources.
 
 Authentication: AWS Congito<br/>
 Smart Chat: AWS Lex<br/>
@@ -17,11 +17,11 @@ Server: AWS Lambda<br/>
 Caching: S3 Bucket<br/>
 Suggestions: for food - yelp<br/>
 
-### Chat Architecture Diagram
+## Chat Architecture Diagram
 
 ![diagram](/temp/arch-diag.png)
 
 
-### Chat sneak peek
+## Chat sneak peek
 
 ![snap](/temp/chat-front.png)
