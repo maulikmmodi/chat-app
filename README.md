@@ -3,7 +3,7 @@
 It is basic chat-bot application to interect with open APIs. We are focusing on popular use cases for the interaction and get the real time data. As a user you will chat with amazon lex bot and get real time answers with the suggestion and recommandation.
 
 We have support for Yelp-API with suggestions and real time chat. <br/>
-#### [Demo Version]( https://chat1-app.auth.us-west-2.amazoncognito.com/login?response_type=token&client_id=519apbf5kblmhjt7h3qsljdeba&redirect_uri=https://s3-us-west-2.amazonaws.com/chat1-backet/index.html)
+### [Demo Version]( https://chat1-app.auth.us-west-2.amazoncognito.com/login?response_type=token&client_id=519apbf5kblmhjt7h3qsljdeba&redirect_uri=https://s3-us-west-2.amazonaws.com/chat1-backet/index.html)
 
 ## Chat Example
 
