@@ -158,7 +158,6 @@ def dining_suggestion_intent(intent_request):
     time = get_slots(intent_request)["Time"]
     source = intent_request['invocationSource']
     
-    print ('dining_suggestion_intent')
     
     if source == 'DialogCodeHook':
         slots = get_slots(intent_request)
@@ -181,7 +180,7 @@ def dining_suggestion_intent(intent_request):
         
     # Add Yelp API endpoint to get the data
     requestData = {
-                    "term":"restaurants",
+                    "term":cuisine+", restaurants",
                     "location":location,
                     "categories":cuisine,
                     "open_at":"1552572000",
