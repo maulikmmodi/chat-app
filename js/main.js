@@ -1,5 +1,3 @@
-
-
 //Amazon service interaction JS
 
 function getUrlVars() {
@@ -11,8 +9,6 @@ function getUrlVars() {
 }
 
 var id_token = getUrlVars()["id_token"];
-
-console.log('id_token' + id_token);
 
 AWS.config.region = 'us-west-2';
 AWS.config.credentials = new AWS.CognitoIdentityCredentials({
@@ -46,8 +42,6 @@ var messages = [], //array that hold the record of each string in chat
 		
 		// User's own message for display
 		lastUserMessage = userMessage();
-		
-		console.log('lastUserMessage', lastUserMessage);
 
 		return new Promise(function (resolve, reject) {
 			talking = true;
@@ -62,12 +56,10 @@ var messages = [], //array that hold the record of each string in chat
 			}
 			apigClient.chatbotPost(params, body, additionalParams)
 			.then(function(result){
-				// console.log("done");
-				// console.log(result.data.body);
 				
 				reply = result.data.body;
 			
-				$("<li class='replies'><p>" + reply + "</p></li>").appendTo($('.messages ul'));
+				$("<li class='replies'><img src='https://s3-us-west-2.amazonaws.com/chat1-backet/temp/Yelp-logo.jpg' alt='' /><p>" + reply + "</p></li>").appendTo($('.messages ul'));
 				$('.message-input input').val(null);
 				$('.contact.active .preview').html('<span>You: </span>' + reply);
 				$(".messages").animate({ scrollTop: $(document).height() }, "fast");
@@ -137,8 +129,7 @@ function userMessage() {
 		return false;
 	}
 
-	console.log('message0--->'+ message);
-	$('<li class="sent"><p>' + message + '</p></li>').appendTo($('.messages ul'));
+	$('<li class="sent"><img src="https://s3-us-west-2.amazonaws.com/chat1-backet/temp/man.png" alt="" /><p>' + message + '</p></li>').appendTo($('.messages ul'));
 	$('.message-input input').val(null);
 	$('.contact.active .preview').html('<span>You: </span>' + message);
 	$(".messages").animate({ scrollTop: $(document).height() }, "fast");
