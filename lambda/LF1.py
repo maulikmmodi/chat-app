@@ -5,6 +5,7 @@ import dateutil.parser
 import datetime
 import time
 import logging
+import boto3
 from botocore.vendored import requests
 
 
@@ -102,7 +103,7 @@ def thank_you_intent(intent_request):
         }
     }
 
-def validate_dining_suggestion(location, cuisine, num_people, date, time):
+def validate_dining_suggestion(location, cuisine, num_people, date, given_time):
     
     locations = ['brooklyn', 'new york', 'manhattan']
     if location is not None and location.lower() not in locations:
@@ -110,7 +111,7 @@ def validate_dining_suggestion(location, cuisine, num_people, date, time):
                                        'Location',
                                        'Please enter correct location')
                                        
-    cuisines = ['indian', 'mexican', 'japanese']
+    cuisines = ['indian', 'mexican', 'japanese','chinese']
     if cuisine is not None and cuisine.lower() not in cuisines:
         return build_validation_result(False,
                                        'Cuisine',
@@ -126,16 +127,16 @@ def validate_dining_suggestion(location, cuisine, num_people, date, time):
     
     if date is not None:
         if not isvalid_date(date):
-            return build_validation_result(False, 'Date', 'I did not understand that, what date would you like to pick the flowers up?')
-        elif datetime.datetime.strptime(date, '%Y-%m-%d').date() <= datetime.date.today():
-            return build_validation_result(False, 'Date', 'You can pick up the flowers from tomorrow onwards.  What day would you like to pick them up?')
+            return build_validation_result(False, 'Date', 'I did not understand that, what date would you like to add?')
+        elif datetime.datetime.strptime(date, '%Y-%m-%d').date() < datetime.date.today():
+            return build_validation_result(False, 'Date', 'You can search restaurant from today onwards. What day would you like to search?')
 
-    if time is not None:
-        if len(time) != 5:
+    if given_time is not None:
+        if len(given_time) != 5:
             # Not a valid time; use a prompt defined on the build-time model.
             return build_validation_result(False, 'Time', None)
 
-        hour, minute = time.split(':')
+        hour, minute = given_time.split(':')
         hour = parse_int(hour)
         minute = parse_int(minute)
         if math.isnan(hour) or math.isnan(minute):
@@ -155,15 +156,15 @@ def dining_suggestion_intent(intent_request):
     cuisine = get_slots(intent_request)["Cuisine"]
     num_people = get_slots(intent_request)["People"]
     date = get_slots(intent_request)["Date"]
-    time = get_slots(intent_request)["Time"]
+    given_time = get_slots(intent_request)["Time"]
     source = intent_request['invocationSource']
     
     
     if source == 'DialogCodeHook':
         slots = get_slots(intent_request)
         
-        validation_result = validate_dining_suggestion(location, cuisine, num_people, date, time)
-        
+        validation_result = validate_dining_suggestion(location, cuisine, num_people, date, given_time)
+        print (validation_result)
         if not validation_result['isValid']:
             slots[validation_result['violatedSlot']] = None
             return elicit_slot(intent_request['sessionAttributes'],
@@ -174,30 +175,93 @@ def dining_suggestion_intent(intent_request):
                                
         output_session_attributes = intent_request['sessionAttributes'] if intent_request['sessionAttributes'] is not None else {}
         
-
-        return delegate(output_session_attributes, get_slots(intent_request))
-        
+        print ('here')
+        print ('uncomment below to get the ')
+        # return delegate(output_session_attributes, get_slots(intent_request))
+      
+    # time to Unix time conversion for the yelp API  
+    # req_date = datetime.datetime.strptime(date, '%Y-%m-%d')
+    # req_hour, req_minute = given_time.split(':')
+    # req_hour = parse_int(req_hour)
+    # req_minute = parse_int(req_minute)
+    
+    # dt = datetime.datetime(req_date.year, req_date.month, req_date.day, req_hour, req_minute)
+    # dt_unix = time.mktime(dt.timetuple())
+    # dt_unix = parse_int(dt_unix)
+    
         
     # Add Yelp API endpoint to get the data
     requestData = {
                     "term":cuisine+", restaurants",
                     "location":location,
                     "categories":cuisine,
-                    "open_at":"1552572000",
+                    # "open_at": dt_unix,
                     "limit":"3",
                     "peoplenum": num_people,
                     "Date": date,
-                    "Time": time
+                    "Time": given_time
                 }
+                
+    print (requestData)
     
-    resultData = restaurantApiCall(requestData)
+    # This is for the yelp API
+    # resultData = restaurantApiCall(requestData)
+    
+    messageId = restaurantSQSRequest(requestData)
+    print (messageId)
 
-    # resultData = ''
     return close(intent_request['sessionAttributes'],
              'Fulfilled',
              {'contentType': 'PlainText',
-              'content': resultData})
+              'content': 'Got all the data, You will receive recommendation soon.'})
 
+
+def restaurantSQSRequest(requestData):
+    
+    sqs = boto3.client('sqs')
+    queue_url = 'https://sqs.us-west-2.amazonaws.com/844243140541/food-bot-queue'
+    delaySeconds = 5
+    messageAttributes = {
+        'Term': {
+            'DataType': 'String',
+            'StringValue': requestData['term']
+        },
+        'Location': {
+            'DataType': 'String',
+            'StringValue': requestData['location']
+        },
+        'Categories': {
+            'DataType': 'String',
+            'StringValue': requestData['categories']
+        },
+        "DiningTime": {
+            'DataType': "String",
+            'StringValue': requestData['Time']
+        },
+        "DiningDate": {
+            'DataType': "String",
+            'StringValue': requestData['Date']
+        },
+        'PeopleNum': {
+            'DataType': 'Number',
+            'StringValue': requestData['peoplenum']
+        }
+    }
+    messageBody=('Recommendation for the food')
+    
+    response = sqs.send_message(
+        QueueUrl = queue_url,
+        DelaySeconds = delaySeconds,
+        MessageAttributes = messageAttributes,
+        MessageBody = messageBody
+        )
+    
+    print ('send data to queue')
+    print(response['MessageId'])
+    
+    return response['MessageId']
+    
+    
 
 def restaurantApiCall(requestData):
     
@@ -215,8 +279,10 @@ def restaurantApiCall(requestData):
     response = requests.request("GET", url, data=payload, headers=headers, params=querystring)
     message = json.loads(response.text)
     
-    if len(message['businesses']) < 0:
-        return 'There is no restaurants under this description'
+    print(message['businesses'])
+    
+    if len(message['businesses']) <= 0:
+        return 'We can not find any restaurant under this description, please try again.'
     
     textString = "Hello! Here are my " + requestData['categories'] + " restaurant suggestions for " + requestData['peoplenum'] +" people, for " + requestData['Date'] + " at " + requestData['Time'] + ". "
     count = 1
