@@ -4,34 +4,44 @@ import datetime
 from botocore.vendored import requests
 from elasticsearch import Elasticsearch, RequestsHttpConnection
 from requests_aws4auth import AWS4Auth
+import csv
+from io import BytesIO
 
 def lambda_handler(event, context):
     # TODO implement
     resultData = []
-    totalRestaurantCount = 1
-    for cuisine in ['mexican']:#, 'indian', 'japanese', 'chinese', 'thai', 'french']:
+    
+    if event['data_origin'] == 'yelp':
+        totalRestaurantCount = 15
+        for cuisine in ['indian']:#, 'indian', 'mexican', 'chinese', 'thai', 'french']:japanese
+            
+            for i in range(totalRestaurantCount):
+                requestData = {
+                                "term": cuisine + " restaurants",
+                                "location": "manhattan",
+                                "limit": 50,
+                                "offset": 50*i
+                            }
+                result = yelpApiCall(requestData)
+                resultData = resultData + result
         
-        for i in range(totalRestaurantCount):
-            requestData = {
-                            "term": cuisine + " restaurants",
-                            "location": "manhattan",
-                            "limit": 5,
-                            "offset": 5*i
-                        }
-            result = yelpApiCall(requestData)
-            resultData = resultData + result
-    
-    # Add data to the dynamodDB
-    dynamoInsert(resultData)
-    
-    # Add index data to the ElasticSearch
-    elasticIndex(resultData)
-    
+        # Add data to the dynamodDB
+        dynamoInsert(resultData)
+        
+        # Add index data to the ElasticSearch
+        elasticIndex(resultData)
+    else:
+        
+        # get data from s3
+        resultData = getDataFromS3()
+        
+        # Add index data to the ElasticSearch
+        elasticIndexForPrediction(resultData)
     
     return {
         'statusCode': 200,
         'body': json.dumps('success'),
-        'total': len(resultData)
+        'total': 1#len(resultData)
     }
 
 def yelpApiCall(requestData):
@@ -71,8 +81,8 @@ def dynamoInsert(restaurants):
             'categories': each_restaurants['categories'],
             'rating': int(each_restaurants['rating']),
             'review_count': each_restaurants['review_count'],
-            'transactions': each_restaurants['transactions'],
-            'zip_code': each_restaurants['location']['zip_code'],
+            # 'transactions': each_restaurants['transactions'],
+            # 'zip_code': each_restaurants['location']['zip_code'],
             'display_address': each_restaurants['location']['display_address']
         }
         
@@ -86,6 +96,11 @@ def dynamoInsert(restaurants):
         if (each_restaurants['phone']):
             dataObject['phone'] = each_restaurants['phone']
         
+        if (each_restaurants['location']['zip_code']):
+            dataObject['zip_code'] = each_restaurants['location']['zip_code']
+        
+        
+        print ('dataObject', dataObject)
         table.put_item(
                Item={
                    'insertedAtTimestamp': str(datetime.datetime.now()),
@@ -96,7 +111,7 @@ def dynamoInsert(restaurants):
     
 
 def elasticIndex(restaurants):
-    host = 'search-dining-suggestion-search-bzwynnc3fgpjqu2tlpou72tbre.us-west-2.es.amazonaws.com' # For example, my-test-domain.us-east-1.es.amazonaws.com
+    host = 'search-es-yelp-555toxbazyu56cgn5sgplxwgqy.us-west-2.es.amazonaws.com' # For example, my-test-domain.us-east-1.es.amazonaws.com
     region = 'us-west-2'
     
     service = 'es'
@@ -120,11 +135,89 @@ def elasticIndex(restaurants):
             'categories': each_restaurants['categories']
         }
         
-        alreadyExists = es.indices.exists(index="restaurants")
+        # alreadyExists = es.indices.exists(index="restaurants")
                             
-        print ('alreadyExists', alreadyExists)
+        print ('dataObject', dataObject)
         
-        if alreadyExists:
-            es.index(index="restaurants", doc_type="Restaurant", body=dataObject, refresh=True)
-        else:
-            es.create(index="restaurants", doc_type="Restaurant", body=dataObject)
+        # if alreadyExists:
+        es.index(index="restaurants", doc_type="Restaurant", id=each_restaurants['id'], body=dataObject, refresh=True)
+        # else:
+        #     es.create(index="restaurants", doc_type="Restaurant", body=dataObject)
+
+def getDataFromS3():
+    
+    data_key = 'FILE_3.csv'
+    bucket = 'sagemaker-yelp-data' 
+    data_location = 'https://s3-us-west-2.amazonaws.com/sagemaker-yelp-data/FILE_3.csv'
+
+    s3 = boto3.resource(u's3')
+
+    # get a handle on the bucket that holds your file
+    bucket = s3.Bucket(u'sagemaker-yelp-data')
+    
+    # get a handle on the object you want (i.e. your file)
+    obj = bucket.Object(key=u'FILE_3.csv')
+    
+    # get the object
+    response = obj.get()
+    
+    lines = response['Body'].read().splitlines(True)
+    final_list = []
+    for line in lines:
+        final_list.append(line.decode('UTF-8'))
+        
+    reader = csv.reader(final_list)
+    
+    result = []
+    i = 0
+    for row in reader:
+        if i != 0:
+            if float(row[-1]) == 1.0:
+                dataObject = {
+                    'id': row[1],
+                    'cuisine': row[2],
+                    'rating': int(row[3]),
+                    'review_count': int(row[4]),
+                    'score': float(row[5])
+                }
+                result.append(dataObject)
+        i = i+1 
+    
+    
+    return result
+
+def elasticIndexForPrediction(restaurants):
+    host = 'search-predictions-lmr33sl6iq3l4on4tmmsmzbf4a.us-west-2.es.amazonaws.com' # For example, my-test-domain.us-east-1.es.amazonaws.com
+    region = 'us-west-2'
+    
+    service = 'es'
+    credentials = boto3.Session().get_credentials()
+    awsauth = AWS4Auth(credentials.access_key, credentials.secret_key, region, service)
+    
+    es = Elasticsearch(
+        hosts = [{'host': host, 'port': 443}],
+        # http_auth = awsauth,
+        use_ssl = True,
+        verify_certs = True,
+        connection_class = RequestsHttpConnection
+    )
+    
+    for each_restaurants in restaurants:
+        
+        dataObject = {
+            'id': each_restaurants['id'],
+            'cuisine': each_restaurants['cuisine'],
+            'rating': each_restaurants['rating'],
+            'review_count': each_restaurants['review_count'],
+            'score': each_restaurants['score']
+        }
+        
+        # alreadyExists = es.indices.exists(index="restaurants")
+                            
+        print ('dataObject', dataObject)
+        
+        # if alreadyExists:
+        es.index(index="predictions", doc_type="Prediction", id=each_restaurants['id'], body=dataObject, refresh=True)
+        # else:
+        #     es.create(index="restaurants", doc_type="Restaurant", body=dataObject)
+    

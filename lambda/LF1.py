@@ -103,7 +103,7 @@ def thank_you_intent(intent_request):
         }
     }
 
-def validate_dining_suggestion(location, cuisine, num_people, date, given_time):
+def validate_dining_suggestion(location, cuisine, num_people, date, given_time, emailId):
     
     locations = ['brooklyn', 'new york', 'manhattan']
     if location is not None and location.lower() not in locations:
@@ -111,7 +111,7 @@ def validate_dining_suggestion(location, cuisine, num_people, date, given_time):
                                        'Location',
                                        'Please enter correct location')
                                        
-    cuisines = ['indian', 'mexican', 'japanese','chinese']
+    cuisines = ['indian', 'mexican', 'japanese','chinese', 'american']
     if cuisine is not None and cuisine.lower() not in cuisines:
         return build_validation_result(False,
                                        'Cuisine',
@@ -147,6 +147,12 @@ def validate_dining_suggestion(location, cuisine, num_people, date, given_time):
             # Outside of business hours
             return build_validation_result(False, 'Time', 'Our business hours are from ten a m. to five p m. Can you specify a time during this range?')
 
+    emailList = ['mm9817@nyu', 'maulik.modi@nyu.edu']
+    if emailId is not None and emailId.lower() not in emailList:
+        
+        return build_validation_result(False,
+                                      'Email',
+                                      'Please add valid email for recommendation')
     
     return build_validation_result(True, None, None)
 
@@ -157,13 +163,14 @@ def dining_suggestion_intent(intent_request):
     num_people = get_slots(intent_request)["People"]
     date = get_slots(intent_request)["Date"]
     given_time = get_slots(intent_request)["Time"]
+    emailId = get_slots(intent_request)["Email"]
     source = intent_request['invocationSource']
     
     
     if source == 'DialogCodeHook':
         slots = get_slots(intent_request)
         
-        validation_result = validate_dining_suggestion(location, cuisine, num_people, date, given_time)
+        validation_result = validate_dining_suggestion(location, cuisine, num_people, date, given_time, emailId)
         print (validation_result)
         if not validation_result['isValid']:
             slots[validation_result['violatedSlot']] = None
@@ -177,7 +184,7 @@ def dining_suggestion_intent(intent_request):
         
         print ('here')
         print ('uncomment below to get the ')
-        # return delegate(output_session_attributes, get_slots(intent_request))
+        return delegate(output_session_attributes, get_slots(intent_request))
       
     # time to Unix time conversion for the yelp API  
     # req_date = datetime.datetime.strptime(date, '%Y-%m-%d')
@@ -199,7 +206,8 @@ def dining_suggestion_intent(intent_request):
                     "limit":"3",
                     "peoplenum": num_people,
                     "Date": date,
-                    "Time": given_time
+                    "Time": given_time,
+                    "EmailId": emailId
                 }
                 
     print (requestData)
@@ -245,6 +253,10 @@ def restaurantSQSRequest(requestData):
         'PeopleNum': {
             'DataType': 'Number',
             'StringValue': requestData['peoplenum']
+        },
+        'EmailId': {
+            'DataType': 'String',
+            'StringValue': requestData['EmailId']
         }
     }
     messageBody=('Recommendation for the food')
